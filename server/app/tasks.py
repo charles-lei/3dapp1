@@ -29,6 +29,7 @@ class TaskQueue:
         self.pipeline_fn = pipeline_fn
         self._queue: queue.Queue[str] = queue.Queue()
         self._worker: threading.Thread | None = None
+        self._start_lock = threading.Lock()
 
     def task_dir(self, task_id: str) -> Path:
         return self.tasks_root / task_id
@@ -55,24 +56,25 @@ class TaskQueue:
         self._queue.put(task_id)
 
     def start(self) -> None:
-        if self._worker is not None:
-            return  # 只允许启动一个 worker，保证串行
+        with self._start_lock:
+            if self._worker is not None:
+                return  # 只允许启动一个 worker，保证串行
 
-        def work() -> None:
-            while True:
-                task_id = self._queue.get()
-                try:
-                    self.pipeline_fn(self.task_dir(task_id))
-                except Exception as e:  # pipeline_fn 正常应自行落盘 failed，这里是兜底
-                    StatusStore(self.task_dir(task_id)).update(
-                        state=TaskState.FAILED,
-                        error=PipelineError("TRAIN_FAILED", f"内部错误（{type(e).__name__}）"),
-                    )
-                finally:
-                    self._queue.task_done()
+            def work() -> None:
+                while True:
+                    task_id = self._queue.get()
+                    try:
+                        self.pipeline_fn(self.task_dir(task_id))
+                    except Exception as e:  # pipeline_fn 正常应自行落盘 failed，这里是兜底
+                        StatusStore(self.task_dir(task_id)).update(
+                            state=TaskState.FAILED,
+                            error=PipelineError("TRAIN_FAILED", f"内部错误（{type(e).__name__}）"),
+                        )
+                    finally:
+                        self._queue.task_done()
 
-        self._worker = threading.Thread(target=work, daemon=True)
-        self._worker.start()
+            self._worker = threading.Thread(target=work, daemon=True)
+            self._worker.start()
 
     def recover(self) -> int:
         recovered = 0

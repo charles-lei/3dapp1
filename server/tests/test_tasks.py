@@ -1,7 +1,9 @@
 import io
 import json
+import threading
 import time
 import zipfile
+from unittest.mock import patch
 
 import pytest
 
@@ -71,3 +73,34 @@ def test_list_tasks(tmp_path):
     ids = [q.create_task(_zip_bytes()) for _ in range(2)]
     tasks = q.list_tasks()
     assert [t["task_id"] for t in tasks] == sorted(ids)
+
+
+def test_concurrent_start_creates_only_one_worker(tmp_path):
+    q = TaskQueue(tmp_path, pipeline_fn=lambda d: None)
+    created_count = 0
+    real_thread = threading.Thread
+
+    def counting_thread(*args, **kwargs):
+        if kwargs.get("daemon"):
+            nonlocal created_count
+            created_count += 1
+        return real_thread(*args, **kwargs)
+
+    errors = []
+
+    def starter():
+        try:
+            q.start()
+        except Exception as e:
+            errors.append(e)
+
+    with patch("app.tasks.threading.Thread", side_effect=counting_thread):
+        threads = [threading.Thread(target=starter) for _ in range(10)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+    assert not errors
+    assert created_count == 1
+    assert q._worker is not None
