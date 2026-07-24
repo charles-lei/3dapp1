@@ -1,0 +1,10 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+opencv-python-headless>=4.9
+imagehash>=4.3
+Pillow>=10.0
+trimesh>=4.4
+fast-simplification>=0.1.7
+pytest>=8.0
+httpx>=0.27
+python-multipart>=0.0.9
