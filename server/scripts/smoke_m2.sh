@@ -4,6 +4,7 @@
 set -euo pipefail
 BASE="http://${1:-127.0.0.1:8000}"
 TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/photos"
 python - "$TMP" <<'PY'
 import sys, cv2, numpy as np, pathlib
@@ -21,7 +22,7 @@ for i in $(seq 1 30); do
   RESP=$(curl -sf "$BASE/api/tasks/$TASK_ID/status")
   echo "$RESP"
   STATE=$(echo "$RESP" | python -c "import sys,json;print(json.load(sys.stdin)['state'])")
-  [ "$STATE" = "done" ] || [ "$STATE" = "failed" ] && break
+  if [ "$STATE" = "done" ] || [ "$STATE" = "failed" ]; then break; fi
   sleep 2
 done
 echo "==> 冒烟完成（此脚本验证 API 链路；成功出 GLB 的验证用 scripts/e2e_m1.sh + 真实照片）"
