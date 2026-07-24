@@ -55,6 +55,9 @@ class TaskQueue:
         self._queue.put(task_id)
 
     def start(self) -> None:
+        if self._worker is not None:
+            return  # 只允许启动一个 worker，保证串行
+
         def work() -> None:
             while True:
                 task_id = self._queue.get()
