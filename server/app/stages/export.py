@@ -72,7 +72,10 @@ def cleanup_mesh(
     # 3) 居中 + 缩放到单位包围盒
     center = mesh.bounds.mean(axis=0)
     mesh.apply_translation(-center)
-    scale = 1.0 / max(mesh.extents)
+    max_extent = float(max(mesh.extents))
+    if max_extent <= 0:
+        raise PipelineError("EXPORT_FAILED", "网格退化，无有效几何")
+    scale = 1.0 / max_extent
     mesh.apply_scale(scale)
 
     mesh.export(out_path)

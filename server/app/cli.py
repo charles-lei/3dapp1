@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from app import pipeline
+from app.cleanup import IMAGE_SUFFIXES
 from app.status import StatusStore
 
 
@@ -19,11 +20,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--min-images", type=int, default=40)
     args = parser.parse_args(argv)
 
+    photos_path = Path(args.photos)
+    if not photos_path.is_dir():
+        print(f"错误：--photos 不是有效目录: {args.photos}", file=sys.stderr)
+        return 2
+
     task_id = args.task_id or secrets.token_hex(3)
     task_dir = Path(args.data_dir) / "tasks" / task_id
     (task_dir / "photos").mkdir(parents=True, exist_ok=True)
-    for p in sorted(Path(args.photos).iterdir()):
-        if p.is_file():
+    for p in sorted(photos_path.iterdir()):
+        if p.is_file() and p.suffix.lower() in IMAGE_SUFFIXES:
             shutil.copy2(p, task_dir / "photos" / p.name)
 
     pipeline.run_pipeline(task_dir, min_images=args.min_images)

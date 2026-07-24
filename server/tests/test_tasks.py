@@ -1,5 +1,4 @@
 import io
-import json
 import threading
 import time
 import zipfile
@@ -34,6 +33,18 @@ def test_create_task_rejects_non_image_entries(tmp_path):
     q = TaskQueue(tmp_path)
     with pytest.raises(PipelineError):
         q.create_task(_zip_bytes(names=("evil.exe",)))
+    # 无效图片的 zip 不应留下空任务目录
+    assert not any(q.tasks_root.iterdir())
+
+
+def test_create_task_rejects_too_many_images(tmp_path):
+    q = TaskQueue(tmp_path)
+    names = [f"{i:04d}.jpg" for i in range(501)]
+    with pytest.raises(PipelineError) as exc_info:
+        q.create_task(_zip_bytes(names=names))
+    assert exc_info.value.code == "INSUFFICIENT_IMAGES"
+    assert "超出限制" in exc_info.value.message_zh
+    assert not any(q.tasks_root.iterdir())
 
 
 def test_worker_executes_tasks_serially(tmp_path):
@@ -57,6 +68,36 @@ def test_worker_executes_tasks_serially(tmp_path):
         ("start", ids[0]), ("end", ids[0]),
         ("start", ids[1]), ("end", ids[1]),
     ]
+
+
+def test_worker_keeps_running_after_pipeline_and_status_fail(tmp_path, monkeypatch):
+    processed = []
+    original_update = StatusStore.update
+
+    def failing_update(self, *args, **kwargs):
+        # 第一次尝试写入 failed 状态时故意抛异常，模拟磁盘写失败
+        if kwargs.get("state") == TaskState.FAILED and len(processed) == 1:
+            raise RuntimeError("disk full")
+        return original_update(self, *args, **kwargs)
+
+    monkeypatch.setattr(StatusStore, "update", failing_update)
+
+    def fake_pipeline(task_dir):
+        processed.append(task_dir.name)
+        if len(processed) == 1:
+            raise RuntimeError("pipeline boom")
+
+    q = TaskQueue(tmp_path, pipeline_fn=fake_pipeline)
+    ids = [q.create_task(_zip_bytes()) for _ in range(2)]
+    for i in ids:
+        q.submit(i)
+    q.start()
+
+    deadline = time.time() + 5
+    while len(processed) < 2 and time.time() < deadline:
+        time.sleep(0.01)
+
+    assert len(processed) == 2
 
 
 def test_recover_resubmits_interrupted_tasks(tmp_path):

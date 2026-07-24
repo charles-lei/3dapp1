@@ -80,3 +80,14 @@ def test_cleanup_mesh_decimates_large_mesh(tmp_path):
     # fast quadric 按 target_reduction 逼近目标面数，允许 10% 误差
     assert 0 < stats["faces_out"] <= 2200
     assert stats["faces_in"] == 20480
+
+
+def test_cleanup_mesh_rejects_degenerate_mesh(tmp_path):
+    src = tmp_path / "degenerate.ply"
+    degenerate = trimesh.Trimesh(vertices=[[0, 0, 0]] * 3, faces=[[0, 1, 2]])
+    degenerate.export(src)
+    out = tmp_path / "model.glb"
+    with pytest.raises(PipelineError) as exc_info:
+        cleanup_mesh(src, out)
+    assert exc_info.value.code == "EXPORT_FAILED"
+    assert "网格退化" in exc_info.value.message_zh

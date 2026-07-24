@@ -5,6 +5,7 @@ import socket
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import anyio
 import uvicorn
 from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
@@ -42,20 +43,18 @@ def create_app(data_dir: Path = DEFAULT_DATA_DIR, queue: TaskQueue | None = None
 
     @app.post("/api/tasks", status_code=201)
     async def create_task(file: UploadFile):
-        task_id = task_queue.create_task(await file.read())
+        content = await file.read()
+        task_id = await anyio.to_thread.run_sync(task_queue.create_task, content)
         task_queue.submit(task_id)
         return {"task_id": task_id}
 
     @app.get("/api/tasks/{task_id}/status")
     async def get_status(task_id: str):
-        try:
-            return StatusStore(task_queue.task_dir(task_id)).read()
-        except FileNotFoundError:
-            raise HTTPException(status_code=404, detail="task not found")
+        return await _read_status_or_404(task_queue, task_id)
 
     @app.get("/api/tasks/{task_id}/model")
     async def get_model(task_id: str):
-        status = _read_status_or_404(task_queue, task_id)
+        status = await _read_status_or_404(task_queue, task_id)
         if status["state"] != TaskState.DONE.value:
             raise HTTPException(status_code=409, detail="model not ready")
         return FileResponse(
@@ -73,17 +72,17 @@ def create_app(data_dir: Path = DEFAULT_DATA_DIR, queue: TaskQueue | None = None
 
     @app.delete("/api/tasks/{task_id}", status_code=204)
     async def delete_task(task_id: str):
-        status = _read_status_or_404(task_queue, task_id)
+        status = await _read_status_or_404(task_queue, task_id)
         if status["state"] not in _TERMINAL_STATES:
             raise HTTPException(status_code=409, detail="task still running")
-        shutil.rmtree(task_queue.task_dir(task_id))
+        await anyio.to_thread.run_sync(shutil.rmtree, task_queue.task_dir(task_id))
 
     return app
 
 
-def _read_status_or_404(task_queue: TaskQueue, task_id: str) -> dict:
+async def _read_status_or_404(task_queue: TaskQueue, task_id: str) -> dict:
     try:
-        return StatusStore(task_queue.task_dir(task_id)).read()
+        return await anyio.to_thread.run_sync(StatusStore(task_queue.task_dir(task_id)).read)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="task not found")
 
