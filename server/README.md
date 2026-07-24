@@ -14,3 +14,7 @@ bash scripts/e2e_m1.sh /path/to/photo_set   # 约 80 张环绕照片
 
 ## M2 启动 API 服务
 python -m app.main  # 默认 0.0.0.0:8000，启动时打印局域网 IP
+
+## 冒烟验证
+python -m app.main &        # 启动服务
+bash scripts/smoke_m2.sh    # 上传 45 张测试图并轮询状态（预期在 colmap 阶段失败，证明链路通）
