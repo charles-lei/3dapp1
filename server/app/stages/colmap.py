@@ -21,11 +21,13 @@ def run(
     task_dir: Path,
     store: StatusStore,
     images_subdir: str = "images_clean",
-    runner: Callable = run_command,
+    runner: Callable | None = None,
 ) -> None:
+    runner = runner or run_command
     store.update(state=TaskState.COLMAP, progress=12, stage_detail="COLMAP 特征提取与匹配")
     images_dir = task_dir / images_subdir
     out_dir = task_dir / "colmap"
+    out_dir.mkdir(parents=True, exist_ok=True)
     runner([
         "ns-process-data", "images",
         "--data", str(images_dir),
