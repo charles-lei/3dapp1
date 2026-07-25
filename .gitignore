@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 .venv/
 server/data/
+server/tests/video/
+server/tests/obj*/
