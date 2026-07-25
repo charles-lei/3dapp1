@@ -66,6 +66,14 @@ def test_video_to_photos_adaptive_threshold_keeps_soft_frames(tmp_path: Path) ->
     assert len(result.kept) >= 15
 
 
+def test_video_to_photos_rejects_invalid_keep_ratio(tmp_path: Path) -> None:
+    # 任意合法视频路径即可，校验应在打开视频之前发生 → 用不存在的路径也行
+    with pytest.raises(PipelineError):
+        video_to_photos(tmp_path / "nonexistent.mp4", tmp_path / "out", keep_ratio=1.5)
+    with pytest.raises(PipelineError):
+        video_to_photos(tmp_path / "nonexistent.mp4", tmp_path / "out", keep_ratio=0)
+
+
 def test_video_to_photos_cleans_and_outputs(tmp_path: Path) -> None:
     video = tmp_path / "noise.mp4"
     out_dir = tmp_path / "photos"

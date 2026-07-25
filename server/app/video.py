@@ -53,6 +53,9 @@ def video_to_photos(
     keep_ratio: float = 0.75,
     min_kept: int = 30,
 ) -> CleanResult:
+    if not 0 < keep_ratio <= 1:
+        raise PipelineError("INSUFFICIENT_IMAGES", "keep_ratio 必须在 (0, 1] 区间内")
+
     with tempfile.TemporaryDirectory() as temp_dir:
         raw_dir = Path(temp_dir)
         extract_frames(video_path, raw_dir, max_frames)
