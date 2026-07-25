@@ -4,4 +4,3 @@ __pycache__/
 .venv/
 server/data/
 server/tests/video/
-server/tests/obj*/
