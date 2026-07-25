@@ -3,4 +3,13 @@ __pycache__/
 *.pyc
 .venv/
 server/data/
-server/tests/video/
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/*.iml
+
+# Local tools
+.tools/
