@@ -43,6 +43,29 @@ def test_extract_frames_invalid_video(tmp_path: Path) -> None:
     assert exc_info.value.code == "INSUFFICIENT_IMAGES"
 
 
+def _make_blurred_noise_video(path: Path, n_frames: int) -> None:
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    writer = cv2.VideoWriter(str(path), fourcc, 30.0, (640, 480))
+    assert writer.isOpened(), f"VideoWriter could not open for {path}"
+    for _ in range(n_frames):
+        frame = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)
+        # 15x15 blur keeps laplacian variance just above the 10.0 floor but well below 100,
+        # so the adaptive threshold is exercised rather than the absolute floor.
+        blurred = cv2.GaussianBlur(frame, (15, 15), 0)
+        writer.write(blurred)
+    writer.release()
+
+
+def test_video_to_photos_adaptive_threshold_keeps_soft_frames(tmp_path: Path) -> None:
+    video = tmp_path / "soft.mp4"
+    out_dir = tmp_path / "photos"
+    _make_blurred_noise_video(video, 40)
+
+    result = video_to_photos(video, out_dir, max_frames=40, min_kept=5)
+
+    assert len(result.kept) >= 15
+
+
 def test_video_to_photos_cleans_and_outputs(tmp_path: Path) -> None:
     video = tmp_path / "noise.mp4"
     out_dir = tmp_path / "photos"

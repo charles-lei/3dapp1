@@ -11,7 +11,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--video", required=True, type=Path, help="输入视频路径")
     parser.add_argument("--out", required=True, type=Path, help="输出照片目录")
     parser.add_argument("--max-frames", type=int, default=120, help="最大抽取帧数")
-    parser.add_argument("--blur-threshold", type=float, default=100.0, help="模糊阈值")
+    parser.add_argument("--blur-floor", type=float, default=10.0, help="模糊阈值下限")
+    parser.add_argument("--keep-ratio", type=float, default=0.75, help="保留帧比例")
     parser.add_argument("--min-kept", type=int, default=30, help="至少保留帧数")
     args = parser.parse_args(argv)
 
@@ -24,7 +25,8 @@ def main(argv: list[str] | None = None) -> int:
             args.video,
             args.out,
             max_frames=args.max_frames,
-            blur_threshold=args.blur_threshold,
+            blur_floor=args.blur_floor,
+            keep_ratio=args.keep_ratio,
             min_kept=args.min_kept,
         )
     except PipelineError as e:
