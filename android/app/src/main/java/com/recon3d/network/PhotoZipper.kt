@@ -14,7 +14,7 @@ object PhotoZipper {
         ZipOutputStream(destZip.outputStream().buffered()).use { zos ->
             for (photo in photos) {
                 zos.putNextEntry(ZipEntry(photo.name))
-                photo.inputStream().use { it.copyTo(zos) }
+                photo.inputStream().buffered().use { it.copyTo(zos) }
                 zos.closeEntry()
             }
         }
