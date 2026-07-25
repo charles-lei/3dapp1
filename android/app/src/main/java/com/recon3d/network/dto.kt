@@ -1,7 +1,10 @@
 package com.recon3d.network
 
+import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import retrofit2.HttpException
+
+private val gson = Gson()
 
 data class CreateTaskResponse(@SerializedName("task_id") val taskId: String)
 
@@ -25,7 +28,7 @@ private data class ErrorEnvelope(val error: ErrorBody?)
 
 fun HttpException.toApiException(): ApiException {
     val parsed = runCatching {
-        com.google.gson.Gson().fromJson(response()?.errorBody()?.string(), ErrorEnvelope::class.java).error
+        gson.fromJson(response()?.errorBody()?.string(), ErrorEnvelope::class.java).error
     }.getOrNull()
     return ApiException(
         code = parsed?.code ?: "HTTP_${code()}",
