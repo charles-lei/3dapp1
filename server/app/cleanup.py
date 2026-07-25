@@ -19,6 +19,24 @@ def laplacian_variance(img: np.ndarray) -> float:
     return float(cv2.Laplacian(gray, cv2.CV_64F).var())
 
 
+def adaptive_blur_threshold(
+    variances: list[float],
+    blur_floor: float = 10.0,
+    keep_ratio: float = 0.75,
+    blur_cap: float = 100.0,
+) -> float:
+    """自适应模糊阈值：clamp(p25 分位数, blur_floor, blur_cap)。
+
+    清晰图集 → 封顶 blur_cap（与旧的绝对阈值行为一致）；
+    软图集（视频帧）→ 降到分位数，保留约 keep_ratio 比例；
+    全拍废 → 下限 blur_floor 兜底。
+    """
+    if not variances:
+        return blur_cap
+    p = float(np.percentile(variances, (1 - keep_ratio) * 100))
+    return min(blur_cap, max(blur_floor, p))
+
+
 def is_blurry(path: Path, threshold: float = 100.0) -> bool:
     img = cv2.imread(str(path))
     if img is None:

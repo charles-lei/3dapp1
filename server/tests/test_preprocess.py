@@ -37,6 +37,27 @@ def test_run_fails_with_insufficient_images(tmp_path):
     assert exc_info.value.code == "INSUFFICIENT_IMAGES"
 
 
+def test_run_succeeds_with_all_soft_images(tmp_path):
+    task_dir = tmp_path / "task4"
+    photos = task_dir / "photos"
+    photos.mkdir(parents=True, exist_ok=True)
+    for i in range(10):
+        rng = np.random.default_rng(i)
+        img = rng.integers(0, 255, size=(120, 160, 3), dtype=np.uint8)
+        img = cv2.GaussianBlur(img, (9, 9), 0)  # variance ~10-60, below the old 100 cap
+        cv2.imwrite(str(photos / f"{i:03d}.jpg"), img)
+
+    store = StatusStore(task_dir)
+    store.update(state=TaskState.UPLOADED, progress=0)
+    preprocess.run(task_dir, store, min_count=2, min_kept=5)
+
+    status = store.read()
+    assert status["state"] == "preprocessing"
+    assert status["progress"] == 10
+    assert status["stage_detail"].startswith("保留 ")
+    assert len(list((task_dir / "images_clean").iterdir())) >= 5
+
+
 def test_run_fails_when_most_images_blurry(tmp_path):
     task_dir = tmp_path / "task3"
     _make_photos(task_dir / "photos", count=5, blurry=5)

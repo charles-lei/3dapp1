@@ -5,7 +5,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from app.cleanup import CleanResult, clean_images, laplacian_variance
+from app.cleanup import CleanResult, adaptive_blur_threshold, clean_images, laplacian_variance
 from app.errors import PipelineError
 
 logger = logging.getLogger(__name__)
@@ -68,7 +68,7 @@ def video_to_photos(
         if not variances:
             raise PipelineError("INSUFFICIENT_IMAGES", "未提取到有效帧")
 
-        threshold = max(blur_floor, float(np.percentile(variances, (1 - keep_ratio) * 100)))
+        threshold = adaptive_blur_threshold(variances, blur_floor=blur_floor, keep_ratio=keep_ratio)
         logger.info("自适应模糊阈值 %.1f", threshold)
 
         return clean_images(raw_dir, out_dir, blur_threshold=threshold, min_kept=min_kept)

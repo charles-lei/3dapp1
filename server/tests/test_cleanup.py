@@ -4,6 +4,7 @@ import pytest
 from PIL import Image
 
 from app.cleanup import (
+    adaptive_blur_threshold,
     clean_images,
     downscale_images,
     is_blurry,
@@ -91,3 +92,23 @@ def test_downscale_images(tmp_path):
     out_paths = downscale_images(src, tmp_path / "dst", factor=2)
     with Image.open(out_paths[0]) as im:
         assert im.size == (320, 240)
+
+
+def test_adaptive_blur_threshold_capped_at_cap_for_sharp_images():
+    variances = [600, 700, 800, 900]
+    assert adaptive_blur_threshold(variances) == 100.0
+
+
+def test_adaptive_blur_threshold_uses_percentile_for_soft_images():
+    variances = [5, 12, 14, 18, 22, 30, 40, 48]
+    expected = min(100.0, max(10.0, float(np.percentile(variances, 25))))
+    assert adaptive_blur_threshold(variances) == pytest.approx(expected)
+
+
+def test_adaptive_blur_threshold_floored_for_garbage_images():
+    variances = [3, 4, 5, 6]
+    assert adaptive_blur_threshold(variances) == 10.0
+
+
+def test_adaptive_blur_threshold_returns_cap_for_empty_list():
+    assert adaptive_blur_threshold([]) == 100.0
