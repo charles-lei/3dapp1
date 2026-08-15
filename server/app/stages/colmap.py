@@ -32,6 +32,9 @@ def run(
         "ns-process-data", "images",
         "--data", str(images_dir),
         "--output-dir", str(out_dir),
+        # 照片集规模较小（数十至数百张），穷尽匹配更稳；且 COLMAP ≥3.12 已
+        # 无法读取 nerfstudio 默认下载的旧版 flann 词袋树（faiss 迁移）。
+        "--matching-method", "exhaustive",
     ])
     num_input = len([p for p in images_dir.iterdir() if p.is_file()])
     ratio = registration_ratio(out_dir / "transforms.json", num_input)
