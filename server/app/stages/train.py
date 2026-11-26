@@ -19,7 +19,9 @@ def is_oom(output: str) -> bool:
 
 
 def find_config(train_output_dir: Path) -> Path:
-    configs = sorted(train_output_dir.glob("splatfacto/*/config.yml"))
+    # ns-train 实际产物在 <out>/<实验名>/splatfacto/<时间戳>/config.yml，
+    # 实验名缺省取数据目录名（此处为 colmap），故用 rglob 兼容任意层级
+    configs = sorted(train_output_dir.rglob("splatfacto/*/config.yml"))
     if not configs:
         raise PipelineError("TRAIN_FAILED", "训练结束但未找到 config.yml 产物")
     return configs[-1]
